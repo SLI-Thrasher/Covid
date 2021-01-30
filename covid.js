@@ -1,16 +1,5 @@
 "use strict";
 
-const userAction = async () => {
-    const response = await fetch('https://api.corona-zahlen.org/districts/');
-    const json = await response.json(); //extract JSON from the http response
-    const covidData = Object.entries(json.data);
-    // do something with myJson
-    console.log(covidData)
-    const chemnitzData = covidData.filter(element => element[1].name == 'Chemnitz');
-
-    console.log(chemnitzData[0]);
-  }
-
 const getDistricData = async (district, type) => {
     const response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}`);
     const json = await response.json(); //extract JSON from the http response
@@ -19,22 +8,6 @@ const getDistricData = async (district, type) => {
 
     return json.data[14511].history;
 }
-
-const getDataForChemnitz = async () => {
-    const response = await fetch('https://api.corona-zahlen.org/districts/14511/history');
-    const json = await response.json(); //extract JSON from the http response
-    console.log(json.data[14511].history);
-
-    const history = json.data[14511].history;
-
-    const data = Array.from(history, element => element.cases);
-    console.log(data);
-
-    const labels = Array.from(history, elements => elements.date);
-    console.log(labels);
-
-    drawData(labels, data);
-  }
 
 const drawData = (canvas, labels, data) => {
     var ctx = canvas.getContext('2d');
@@ -46,7 +19,7 @@ const drawData = (canvas, labels, data) => {
         data: {
             labels: labels,
             datasets: [{
-                label: `Covid Fälle Chemnitz`,
+                label: `Covid Chemnitz`,
                 backgroundColor: 'rgb(255, 99, 132)',
                 borderColor: 'rgb(255, 99, 132)',
                 data: data
