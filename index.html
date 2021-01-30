@@ -8,6 +8,14 @@
     <script src="covid.js"></script>
 </head>
 <body>
+    <h2>Zeitraum wählen: </h2>
+    <select id="daysSelector" name="Tage in Vergangenheit">
+        <option value = "0"></option>
+        <option value = "1">7 Tage</option>
+        <option value = "2">30 Tage</option>
+        <option value = "3">3 Monate</option>
+        <option value = "4">6 Monate</option>
+    </select>
     <div>
         <h2>Neue Fälle pro Tag</h2>
         <canvas id="cases"></canvas>
