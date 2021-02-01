@@ -1,6 +1,8 @@
 "use strict";
+let caseData;
+let incidenceData;
 
-const getDistricData = async (district, type, days) => {
+const getDistricData = async (district, type, days = 0) => {
     let response;
     if (days === 0)
         response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}`);
@@ -31,8 +33,25 @@ const drawData = (canvas, labels, data) => {
             }]
         },
 
-        // Configuration options go here
-        options: {}
+        options: {
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        min: 0
+                    }
+                }],
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        displayFormats: {
+                            second: 'MMM d',
+                            minute: 'MMM d',
+                            hour: 'MMM d',
+                        }
+                    }
+                }]
+            }
+        }
         });
     return chart;
 }
@@ -40,42 +59,42 @@ const drawData = (canvas, labels, data) => {
 let chartCases,chartIncidence;
 
 const renderSite = async (days) => {
-    const cases = await getDistricData('14511', 'cases', days);
-    const incidence = await getDistricData('14511', 'incidence', days);
-    
     chartCases = drawData(
         document.getElementById('cases'),
-        Array.from(cases, elements => elements.date), 
-        Array.from(cases, element => element.cases)
+        Array.from(caseData, elements => elements.date), 
+        Array.from(caseData, element => element.cases)
         );
 
     chartIncidence = drawData(
         document.getElementById('incidence'), 
-        Array.from(incidence, elements => elements.date), 
-        Array.from(incidence, elements => elements.weekIncidence)
+        Array.from(incidenceData, elements => elements.date), 
+        Array.from(incidenceData, elements => elements.weekIncidence)
         );
 }
 
-const updateSite = async (days, chart1, chart2) => {
-    const cases = await getDistricData('14511', 'cases', days);
-    const incidence = await getDistricData('14511', 'incidence', days);
+const updateSite = async (days) => {
+    const cases = caseData.slice(caseData.length - days, caseData.length);
+    const incidences = incidenceData.slice(incidenceData.length - days, incidenceData.length);
     
-    chart1.data.labels.length = 0;
-    chart1.data.labels = Array.from(cases, elements => elements.date);
-    chart1.data.datasets[0].data.length = 0;
-    chart1.data.datasets[0].data = Array.from(cases, elements => elements.cases);
+    chartCases.data.labels.length = 0;
+    chartCases.data.labels = Array.from(cases, elements => elements.date);
+    chartCases.data.datasets[0].data.length = 0;
+    chartCases.data.datasets[0].data = Array.from(cases, elements => elements.cases);
 
-    chart1.update();
+    chartCases.update();
 
-    chart2.data.labels.length = 0;
-    chart2.data.labels = Array.from(incidence, elements => elements.date);
-    chart2.data.datasets[0].data.length = 0;
-    chart2.data.datasets[0].data = Array.from(incidence, elements => elements.weekIncidence);
+    chartIncidence.data.labels.length = 0;
+    chartIncidence.data.labels = Array.from(incidences, elements => elements.date);
+    chartIncidence.data.datasets[0].data.length = 0;
+    chartIncidence.data.datasets[0].data = Array.from(incidences, elements => elements.weekIncidence);
 
-    chart2.update();
+    chartIncidence.update();
 }
 
-document.addEventListener("DOMContentLoaded", async (event) => {
+document.addEventListener('DOMContentLoaded', async (event) => {
+    caseData = await getDistricData('14511', 'cases');
+    incidenceData = await getDistricData('14511', 'incidence');
+
     const dropdown = document.getElementById("daysSelector");
     dropdown.onchange = () => {
         switch(dropdown.value){
@@ -83,34 +102,19 @@ document.addEventListener("DOMContentLoaded", async (event) => {
                 renderSite(0);
                 break;
             case '1':
-                updateSite(7, chartCases, chartIncidence);
+                updateSite(7);
                 break;
             case '2':
-                updateSite(30, chartCases, chartIncidence)
+                updateSite(30)
                 break;
             case '3':
-                updateSite(92, chartCases, chartIncidence);
+                updateSite(92);
                 break;
             case '4':
-                updateSite(182, chartCases, chartIncidence);
+                updateSite(182);
                 break;
         }
     };
 
     renderSite(0);
-
-    // const cases = await getDistricData('14511', 'cases');
-    // const incidence = await getDistricData('14511', 'incidence');
-    
-    // drawData(
-    //     document.getElementById('cases'),
-    //     Array.from(cases, elements => elements.date), 
-    //     Array.from(cases, element => element.cases)
-    //     );
-
-    // drawData(
-    //     document.getElementById('incidence'), 
-    //     Array.from(incidence, elements => elements.date), 
-    //     Array.from(incidence, elements => elements.weekIncidence)
-    //     );
 });
