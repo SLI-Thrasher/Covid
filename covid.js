@@ -50,7 +50,8 @@ const drawData = (canvas, labels, data) => {
                         }
                     }
                 }]
-            }
+            },
+            animation: false,
         }
         });
     return chart;
