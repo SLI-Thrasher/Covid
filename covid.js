@@ -16,6 +16,21 @@ const getDistricData = async (district, type, days = 0) => {
     return json.data[14511].history;
 }
 
+const getAllData = async () => {
+    const caseResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/cases`)).json();
+    const incidenceResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/incidence`)).json();
+    let districts = new Array();
+    for(var district in caseResponse.data){
+        districts.push({district: district, 
+                        name: caseResponse.data[district].name, 
+                        cases: caseResponse.data[district].history,
+                        incidences: incidenceResponse.data[district].history,
+                        });
+    }
+    districts.sort((a, b) => a.name.localeCompare(b.name));
+    return districts;
+}
+
 const drawData = (canvas, labels, data) => {
     var ctx = canvas.getContext('2d');
     var chart = new Chart(ctx, {
@@ -60,6 +75,7 @@ const drawData = (canvas, labels, data) => {
 let chartCases,chartIncidence;
 let startDateElement, endDateElement;
 let dropdown;
+let regionSelector;
 
 const renderSite = async (days) => {
     chartCases = drawData(
@@ -165,28 +181,19 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     endDateElement.setAttribute('value', caseData[caseData.length-1].date.slice(0, 10));
     endDateElement.addEventListener('change', dateChanged);
 
+    regionSelector = document.getElementById('regionSelect');
+
 
     dropdown = document.getElementById("daysSelector");
     dropdown.addEventListener('change', dateRangeChanged);
-    //  = () => {
-    //     switch(dropdown.value){
-    //         case '0':
-    //             updateSite(0);
-    //             break;
-    //         case '1':
-    //             updateSite(7);
-    //             break;
-    //         case '2':
-    //             updateSite(30)
-    //             break;
-    //         case '3':
-    //             updateSite(92);
-    //             break;
-    //         case '4':
-    //             updateSite(182);
-    //             break;
-    //     }
-    // };
 
     renderSite(0);
 });
+
+getAllData().then((data) => data.forEach((value) =>{ 
+                const option = document.createElement('option');
+                option.value = value.district;
+                option.text = value.name;
+                regionSelector.add(option);
+                }))
+            .catch(reason => console.log(reason));
