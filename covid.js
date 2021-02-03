@@ -19,15 +19,15 @@ const getDistricData = async (district, type, days = 0) => {
 const getAllData = async () => {
     const caseResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/cases`)).json();
     const incidenceResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/incidence`)).json();
-    let districts = new Array();
+    let districts = new Map();
     for(var district in caseResponse.data){
-        districts.push({district: district, 
+        districts.set(district, {
                         name: caseResponse.data[district].name, 
                         cases: caseResponse.data[district].history,
                         incidences: incidenceResponse.data[district].history,
                         });
     }
-    districts.sort((a, b) => a.name.localeCompare(b.name));
+    
     return districts;
 }
 
@@ -165,6 +165,10 @@ const dateRangeChanged = () => {
     }
 }
 
+const regionChanged = () => {
+    console.log(regionSelector.value);
+}
+
 document.addEventListener('DOMContentLoaded', async (event) => {
     caseData = await getDistricData('14511', 'cases');
     incidenceData = await getDistricData('14511', 'incidence');
@@ -182,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     endDateElement.addEventListener('change', dateChanged);
 
     regionSelector = document.getElementById('regionSelect');
-
+    regionSelector.addEventListener('change', regionChanged);
 
     dropdown = document.getElementById("daysSelector");
     dropdown.addEventListener('change', dateRangeChanged);
@@ -190,10 +194,16 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     renderSite(0);
 });
 
-getAllData().then((data) => data.forEach((value) =>{ 
-                const option = document.createElement('option');
-                option.value = value.district;
-                option.text = value.name;
-                regionSelector.add(option);
-                }))
-            .catch(reason => console.log(reason));
+getAllData()
+    .then(map => {
+        const data = Array
+            .from(map, element => { return {district: element[0], name: element[1].name}})
+            .sort((a, b) => a.name.localeCompare(b.name));
+        data.forEach((value) => { 
+            const option = document.createElement('option');
+            option.value = value.district;
+            option.text = value.name;
+            regionSelector.add(option);
+            })
+        })
+    .catch(reason => console.log(reason));
