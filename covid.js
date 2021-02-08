@@ -2,27 +2,31 @@
 let caseData;
 let incidenceData;
 
-const getDistricData = async (district, type, days = 0) => {
+const getDistrictData = async (district, type, days = 0) => {
     let response;
     if (days === 0)
-        response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}`);
+        response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}`, {cache: "force-cache"});
     else
-        response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}/${days}`);
+        response = await fetch(`https://api.corona-zahlen.org/districts/${district}/history/${type}/${days}, {cache: "force-cache"}`);
 
     const json = await response.json(); //extract JSON from the http response
-    console.log(json);
-    console.log(json.data[district].history);
+    // console.log(json);
+    // console.log(json.data[district].history);
 
-    return json.data[14511].history;
+    return json.data[district].history;
 }
 
 const getAllData = async () => {
-    const caseResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/cases`)).json();
-    const incidenceResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/incidence`)).json();
+    const caseResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/cases/7`, {cache: "force-cache"})).json();
+    const incidenceResponse = await (await fetch(`https://api.corona-zahlen.org/districts/history/incidence/7`, {cache: "force-cache"})).json();
+    // Promise.all()
     let districts = new Map();
     for(var district in caseResponse.data){
+        let name = caseResponse.data[district].name;
+        if( name.startsWith('LK') || name.startsWith('SK'))
+             name = name.slice(3);
         districts.set(district, {
-                        name: caseResponse.data[district].name, 
+                        name: name, 
                         cases: caseResponse.data[district].history,
                         incidences: incidenceResponse.data[district].history,
                         });
@@ -31,7 +35,7 @@ const getAllData = async () => {
     return districts;
 }
 
-const drawData = (canvas, labels, data) => {
+const drawData = (canvas, districtName, labels, data) => {
     var ctx = canvas.getContext('2d');
     var chart = new Chart(ctx, {
         // The type of chart we want to create
@@ -41,7 +45,7 @@ const drawData = (canvas, labels, data) => {
         data: {
             labels: labels,
             datasets: [{
-                label: `Covid Chemnitz`,
+                label: `${districtName}`,
                 backgroundColor: 'rgb(255, 99, 132)',
                 borderColor: 'rgb(255, 99, 132)',
                 data: data
@@ -72,6 +76,7 @@ const drawData = (canvas, labels, data) => {
     return chart;
 }
 
+let dataForAllDistricts;
 let chartCases,chartIncidence;
 let startDateElement, endDateElement;
 let dropdown;
@@ -80,12 +85,14 @@ let regionSelector;
 const renderSite = async (days) => {
     chartCases = drawData(
         document.getElementById('cases'),
+        'Chemnitz',
         Array.from(caseData, elements => elements.date), 
         Array.from(caseData, element => element.cases)
         );
 
     chartIncidence = drawData(
-        document.getElementById('incidence'), 
+        document.getElementById('incidence'),
+        'Chemnitz', 
         Array.from(incidenceData, elements => elements.date), 
         Array.from(incidenceData, elements => elements.weekIncidence)
         );
@@ -110,7 +117,10 @@ const updateSite = async (days) => {
     chartIncidence.update();
 }
 
-const updateSiteWithRange = (start, end) => {
+const updateSiteWithRange = (start, end, district) => {
+    const districtData = dataForAllDistricts.get(district);
+    const caseData = districtData.cases;
+    const incidenceData = districtData.incidences;
     const cases = caseData.filter(element => moment(element.date).isAfter(start) && moment(element.date).isBefore(end));
     const incidences = incidenceData.filter(element => moment(element.date).isAfter(start) && moment(element.date).isBefore(end));
 
@@ -118,6 +128,7 @@ const updateSiteWithRange = (start, end) => {
     chartCases.data.labels = Array.from(cases, elements => elements.date);
     chartCases.data.datasets[0].data.length = 0;
     chartCases.data.datasets[0].data = Array.from(cases, elements => elements.cases);
+    chartCases.data.datasets[0].label = districtData.name;
 
     chartCases.update();
 
@@ -125,64 +136,72 @@ const updateSiteWithRange = (start, end) => {
     chartIncidence.data.labels = Array.from(incidences, elements => elements.date);
     chartIncidence.data.datasets[0].data.length = 0;
     chartIncidence.data.datasets[0].data = Array.from(incidences, elements => elements.weekIncidence);
+    chartIncidence.data.datasets[0].label = districtData.name;
 
     chartIncidence.update();
 }
 
 const dateChanged = () => {
-    const start = startDateElement.value;
-    const end = endDateElement.value;
+    let start = startDateElement.value;
+    let end = endDateElement.value;
+    if ( end < start){
+        startDateElement.value = end;
+        endDateElement.value = start;
+        start = startDateElement.value;
+        end = endDateElement.value;
+    }
     dropdown.value = '0';
     console.log(`Start ${start} Ende ${end}`);
 
-    updateSiteWithRange(start, end);
+    updateSiteWithRange(start, end, regionSelector.value);
 }
 
 const dateRangeChanged = () => {
+    let startDate;
     switch(dropdown.value){
         case '0':
             break;
         case '1':
-            updateSite(7);
-            startDateElement.value = moment(caseData[caseData.length-1].date).subtract(6, 'days').format('YYYY-MM-DD');
+            startDate = moment().subtract(7, 'days');
             break;
         case '2':
-            updateSite(30);
-            startDateElement.value = moment(caseData[caseData.length-1].date).subtract(29, 'days').format('YYYY-MM-DD');
+            startDate = moment().subtract(1, 'months');
             break;
         case '3':
-            updateSite(92);
-            startDateElement.value = moment(caseData[caseData.length-1].date).subtract(91, 'days').format('YYYY-MM-DD');
+            startDate = moment().subtract(3, 'months');
             break;
         case '4':
-            updateSite(182);
-            startDateElement.value = moment(caseData[caseData.length-1].date).subtract(181, 'days').format('YYYY-MM-DD');
+            startDate = moment().subtract(6, 'months');
             break;
         case '5':
-            updateSite(0);
-            startDateElement.value = caseData[0].date.slice(0, 10);
+            startDate = moment('2020-01-01');
             break;
     }
+
+    startDateElement.value = startDate.format('YYYY-MM-DD');
+    updateSiteWithRange(startDateElement.value, endDateElement.value, regionSelector.value);
 }
 
 const regionChanged = () => {
     console.log(regionSelector.value);
+
+    updateSiteWithRange(startDateElement.value, endDateElement.value, regionSelector.value);
 }
 
 document.addEventListener('DOMContentLoaded', async (event) => {
-    caseData = await getDistricData('14511', 'cases');
-    incidenceData = await getDistricData('14511', 'incidence');
+    caseData = await getDistrictData('14511', 'cases');
+    incidenceData = await getDistrictData('14511', 'incidence');
 
     startDateElement = document.getElementById('start');
-    startDateElement.setAttribute('min', caseData[0].date.slice(0, 10));
-    startDateElement.setAttribute('max', caseData[caseData.length-1].date.slice(0, 10));
-    startDateElement.setAttribute('value', caseData[0].date.slice(0, 10));
+    startDateElement.setAttribute('min', moment(caseData[0].date).format('YYYY-MM-DD'));
+    startDateElement.setAttribute('max', moment(caseData[caseData.length-1].date).format('YYYY-MM-DD'));
+    startDateElement.setAttribute('value', moment(caseData[0].date).format('YYYY-MM-DD'));
     startDateElement.addEventListener('change', dateChanged)
     
     endDateElement = document.getElementById('end');
-    endDateElement.setAttribute('min', caseData[0].date.slice(0, 10));
-    endDateElement.setAttribute('max', caseData[caseData.length-1].date.slice(0, 10));
-    endDateElement.setAttribute('value', caseData[caseData.length-1].date.slice(0, 10));
+    endDateElement.setAttribute('min', moment(caseData[0].date).format('YYYY-MM-DD'));;
+    endDateElement.setAttribute('max', moment(caseData[caseData.length-1].date).format('YYYY-MM-DD'));
+    endDateElement.setAttribute('value', moment(caseData[caseData.length-1].date).format('YYYY-MM-DD'));
     endDateElement.addEventListener('change', dateChanged);
 
     regionSelector = document.getElementById('regionSelect');
@@ -192,18 +211,43 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     dropdown.addEventListener('change', dateRangeChanged);
 
     renderSite(0);
-});
 
-getAllData()
-    .then(map => {
-        const data = Array
-            .from(map, element => { return {district: element[0], name: element[1].name}})
-            .sort((a, b) => a.name.localeCompare(b.name));
-        data.forEach((value) => { 
-            const option = document.createElement('option');
-            option.value = value.district;
-            option.text = value.name;
-            regionSelector.add(option);
+    getAllData()
+        .then(map => {
+            dataForAllDistricts = map;
+            const data = Array
+                .from(map, element => { return {district: element[0], name: element[1].name}})
+                .sort((a, b) => a.name.localeCompare(b.name));
+            data.forEach((value) => { 
+                const option = document.createElement('option');
+                option.value = value.district;
+                option.text = value.name;
+                regionSelector.add(option);
+            })
+            regionSelector.value = '14511';
+            dataForAllDistricts.forEach((_data, district) => {
+                updateDistrictMap(district);
             })
         })
-    .catch(reason => console.log(reason));
+        .catch(reason => console.log(reason));
+});
+
+const updateDistrictMap = (district) =>
+{
+    let caseData, incidenceData;
+    Promise.all([getDistrictData(district, 'cases'), getDistrictData(district, 'incidence')])
+        .then(values => {
+            caseData = values[0];
+            incidenceData = values[1];
+
+            const name = dataForAllDistricts.get(district).name;
+            dataForAllDistricts.set(district, {
+                name: name, 
+                cases: caseData,
+                incidences: incidenceData,
+                });
+        })
+        .catch(error => {
+            console.log(error);
+        })
+}
