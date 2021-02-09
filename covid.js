@@ -1,4 +1,8 @@
+/* jshint -W097 */
+/* jshint esversion: 8*/
+
 "use strict";
+
 let caseData;
 let incidenceData;
 
@@ -96,7 +100,7 @@ const renderSite = async (days) => {
         Array.from(incidenceData, elements => elements.date), 
         Array.from(incidenceData, elements => elements.weekIncidence)
         );
-}
+};
 
 const updateSite = async (days) => {
     const cases = caseData.slice(days == 0 ? 0 : caseData.length - days, caseData.length);
@@ -115,14 +119,14 @@ const updateSite = async (days) => {
     chartIncidence.data.datasets[0].data = Array.from(incidences, elements => elements.weekIncidence);
 
     chartIncidence.update();
-}
+};
 
 const updateSiteWithRange = (start, end, district) => {
     const districtData = dataForAllDistricts.get(district);
     const caseData = districtData.cases;
     const incidenceData = districtData.incidences;
-    const cases = caseData.filter(element => moment(element.date).isAfter(start) && moment(element.date).isBefore(end));
-    const incidences = incidenceData.filter(element => moment(element.date).isAfter(start) && moment(element.date).isBefore(end));
+    const cases = caseData.filter(element => moment(element.date).isBetween(start, end, 'days', '[]'));
+    const incidences = incidenceData.filter(element => moment(element.date).isBetween(start, end,'days', '[]'));
 
     chartCases.data.labels.length = 0;
     chartCases.data.labels = Array.from(cases, elements => elements.date);
@@ -180,13 +184,13 @@ const dateRangeChanged = () => {
 
     startDateElement.value = startDate.format('YYYY-MM-DD');
     updateSiteWithRange(startDateElement.value, endDateElement.value, regionSelector.value);
-}
+};
 
 const regionChanged = () => {
     console.log(regionSelector.value);
 
     updateSiteWithRange(startDateElement.value, endDateElement.value, regionSelector.value);
-}
+};
 
 document.addEventListener('DOMContentLoaded', async (event) => {
     caseData = await getDistrictData('14511', 'cases');
@@ -223,11 +227,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
                 option.value = value.district;
                 option.text = value.name;
                 regionSelector.add(option);
-            })
+            });
             regionSelector.value = '14511';
             dataForAllDistricts.forEach((_data, district) => {
                 updateDistrictMap(district);
-            })
+            });
         })
         .catch(reason => console.log(reason));
 });
@@ -249,5 +253,5 @@ const updateDistrictMap = (district) =>
         })
         .catch(error => {
             console.log(error);
-        })
-}
+        });
+};
